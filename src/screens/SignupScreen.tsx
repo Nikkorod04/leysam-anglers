@@ -111,22 +111,23 @@ export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             <Text style={styles.subtitle}>Sign up to get started</Text>
 
             <View style={styles.inputsContainer}>
-              <View style={styles.inputWrapper}>
+              <View style={styles.inputGroup}>
                 <View style={styles.labelWithCount}>
                   <Text style={styles.inputLabel}>Full Name</Text>
                   <Text style={styles.charCount}>{displayName.length}/30</Text>
                 </View>
-                <View style={styles.inputIconContainer}>
-                  <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
+                <View style={styles.inputWrapper}>
+                  <View style={styles.inputIconContainer}>
+                    <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
+                  </View>
+                  <Input
+                    placeholder="Full name"
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    maxLength={30}
+                    style={styles.inputWithIcon}
+                  />
                 </View>
-                <Input
-                  placeholder="Full name"
-                  value={displayName}
-                  onChangeText={setDisplayName}
-                  maxLength={30}
-                  style={styles.inputWithIcon}
-                />
-                <Text style={styles.helperText}>3-30 characters</Text>
               </View>
 
               <View style={styles.inputWrapper}>
@@ -296,6 +297,9 @@ const styles = StyleSheet.create({
   // Input Styles
   inputsContainer: {
     marginBottom: SIZES.margin * 1.5,
+  },
+  inputGroup: {
+    marginBottom: SIZES.margin,
   },
   inputWrapper: {
     position: 'relative',

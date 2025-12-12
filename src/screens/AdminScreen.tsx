@@ -7,20 +7,24 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  TextInput,
+  FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
-import { FishingSpot, Report } from '../types';
+import { FishingSpot, Report, CatchReport } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
 
 export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [flaggedSpots, setFlaggedSpots] = useState<FishingSpot[]>([]);
   const [pendingReports, setPendingReports] = useState<Report[]>([]);
+  const [allCatchReports, setAllCatchReports] = useState<CatchReport[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'spots' | 'reports'>('spots');
+  const [activeTab, setActiveTab] = useState<'spots' | 'reports' | 'catchReports'>('spots');
 
   // Check if user is admin
   const isAdmin = user?.role === 'admin' || user?.role === 'moderator';
@@ -36,8 +40,10 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     try {
       if (activeTab === 'spots') {
         await loadFlaggedSpots();
-      } else {
+      } else if (activeTab === 'reports') {
         await loadPendingReports();
+      } else {
+        await loadAllCatchReports();
       }
     } catch (error) {
       console.error('Error loading data:', error);
@@ -75,6 +81,22 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       } as Report);
     });
     setPendingReports(reports);
+  };
+
+  const loadAllCatchReports = async () => {
+    const q = query(collection(db, 'catchReports'));
+    const snapshot = await getDocs(q);
+    const reports: CatchReport[] = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      reports.push({
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || new Date(),
+      } as CatchReport);
+    });
+    setAllCatchReports(reports);
   };
 
   const handleHideSpot = async (spotId: string) => {
@@ -152,6 +174,35 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
     }
   };
 
+  const handleDeleteCatchReport = async (reportId: string) => {
+    Alert.alert(
+      'Delete Catch Report',
+      'Are you sure you want to permanently delete this catch report? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, 'catchReports', reportId));
+              Alert.alert('Success', 'Catch report has been deleted');
+              loadData();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to delete catch report');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const filteredCatchReports = allCatchReports.filter(report => 
+    report.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    report.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    report.userName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (!isAdmin) {
     return (
       <View style={styles.container}>
@@ -190,6 +241,14 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         >
           <Text style={[styles.tabText, activeTab === 'reports' && styles.activeTabText]}>
             Reports ({pendingReports.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'catchReports' && styles.activeTab]}
+          onPress={() => setActiveTab('catchReports')}
+        >
+          <Text style={[styles.tabText, activeTab === 'catchReports' && styles.activeTabText]}>
+            Catch Reports ({allCatchReports.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -249,7 +308,7 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
               ))
             )}
           </>
-        ) : (
+        ) : activeTab === 'reports' ? (
           <>
             {pendingReports.length === 0 ? (
               <View style={styles.emptyState}>
@@ -290,6 +349,52 @@ export const AdminScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                     >
                       <Ionicons name="close" size={20} color="#fff" />
                       <Text style={styles.actionButtonText}>Dismiss</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))
+            )}
+          </>
+        ) : (
+          <>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color={COLORS.textSecondary} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search by title, description, or user..."
+                placeholderTextColor={COLORS.textSecondary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            {filteredCatchReports.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={64} color={COLORS.success} />
+                <Text style={styles.emptyText}>No catch reports</Text>
+                <Text style={styles.emptySubtext}>All good here!</Text>
+              </View>
+            ) : (
+              filteredCatchReports.map((report) => (
+                <View key={report.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle} numberOfLines={2}>{report.title}</Text>
+                      <Text style={styles.cardSubtitle}>By {report.userName}</Text>
+                      <Text style={styles.reportType}>
+                        Species: {report.species || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDescription} numberOfLines={2}>
+                    {report.description}
+                  </Text>
+                  <View style={styles.cardActions}>
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.dangerButton]}
+                      onPress={() => handleDeleteCatchReport(report.id)}
+                    >
+                      <Ionicons name="trash" size={20} color="#fff" />
+                      <Text style={styles.actionButtonText}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -346,6 +451,23 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: COLORS.primary,
     fontWeight: '700',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    paddingHorizontal: SIZES.padding,
+    marginBottom: SIZES.margin,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: SIZES.padding,
+    paddingHorizontal: SIZES.padding / 2,
+    fontSize: SIZES.base,
+    color: COLORS.text,
   },
   content: {
     flex: 1,
