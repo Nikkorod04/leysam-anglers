@@ -5,9 +5,11 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  sendEmailVerification,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../services/firebase';
 import { User } from '../types';
 
@@ -17,6 +19,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  resendVerificationEmail: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -31,28 +35,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       try {
         if (firebaseUser) {
+          // Reload user to get the latest emailVerified status
+          await firebaseUser.reload();
+          
+          // Check if email is verified
+          if (!firebaseUser.emailVerified) {
+            console.log('User email NOT verified:', firebaseUser.email);
+            // User exists but email not verified - keep them in auth state but mark as unverified
+            setUser({
+              id: firebaseUser.uid,
+              email: firebaseUser.email!,
+              displayName: firebaseUser.displayName || '',
+              photoURL: firebaseUser.photoURL || undefined,
+              role: 'user',
+              isVerified: false,
+              isBanned: false,
+              createdAt: new Date(),
+            });
+            setLoading(false);
+            return;
+          }
+          
+          console.log('User email IS verified:', firebaseUser.email);
+
           // Fetch user data from Firestore
           const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (userDoc.exists()) {
             const userData = userDoc.data();
+            console.log('User document exists, isVerified in Firestore:', userData.isVerified);
+            console.log('Firebase emailVerified:', firebaseUser.emailVerified);
             setUser({
               id: firebaseUser.uid,
               email: firebaseUser.email!,
               displayName: userData.displayName || firebaseUser.displayName || '',
               photoURL: userData.photoURL || firebaseUser.photoURL || undefined,
               role: userData.role || 'user',
-              isVerified: userData.isVerified || false,
+              isVerified: firebaseUser.emailVerified, // Always use Firebase's emailVerified status
               isBanned: userData.isBanned || false,
               createdAt: userData.createdAt?.toDate() || new Date(),
             });
           } else {
+            console.log('User document does NOT exist, creating new one');
+            console.log('Firebase emailVerified:', firebaseUser.emailVerified);
             // Create user document if it doesn't exist
             const newUser: any = {
               id: firebaseUser.uid,
               email: firebaseUser.email!,
               displayName: firebaseUser.displayName || '',
               role: 'user',
-              isVerified: false,
+              isVerified: firebaseUser.emailVerified,
               isBanned: false,
               createdAt: new Date(),
             };
@@ -69,7 +100,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               displayName: firebaseUser.displayName || '',
               photoURL: firebaseUser.photoURL || undefined,
               role: 'user',
-              isVerified: false,
+              isVerified: firebaseUser.emailVerified,
               isBanned: false,
               createdAt: new Date(),
             });
@@ -92,6 +123,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName });
+      
+      // Send email verification
+      await sendEmailVerification(userCredential.user);
       
       // Create user document in Firestore (no undefined values)
       const newUser: any = {
@@ -126,7 +160,45 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    // Clear Remember Me data
+    await AsyncStorage.removeItem('rememberedEmail');
+    await AsyncStorage.removeItem('rememberedPassword');
+    await AsyncStorage.removeItem('rememberMe');
+    
     await signOut(auth);
+  };
+
+  const resendVerificationEmail = async () => {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+    } else {
+      throw new Error('No user is currently logged in');
+    }
+  };
+
+  const refreshUser = async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+      const firebaseUser = auth.currentUser;
+      
+      // Update the user state with fresh data
+      if (firebaseUser) {
+        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setUser({
+            id: firebaseUser.uid,
+            email: firebaseUser.email!,
+            displayName: userData.displayName || firebaseUser.displayName || '',
+            photoURL: userData.photoURL || firebaseUser.photoURL || undefined,
+            role: userData.role || 'user',
+            isVerified: firebaseUser.emailVerified,
+            isBanned: userData.isBanned || false,
+            createdAt: userData.createdAt?.toDate() || new Date(),
+          });
+        }
+      }
+    }
   };
 
   const value = {
@@ -135,6 +207,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signIn,
     logout,
+    resendVerificationEmail,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -23,9 +23,10 @@ export const AboutScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       <View style={styles.content}>
         {/* App Logo Section */}
         <View style={styles.logoSection}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoText}>🎣</Text>
-          </View>
+          <Image 
+            source={require('../../assets/nikko.png')} 
+            style={styles.logo}
+          />
           <Text style={styles.appName}>LeySam Anglers</Text>
           <Text style={styles.appVersion}>Version {appVersion}</Text>
         </View>
@@ -69,24 +70,21 @@ export const AboutScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Contact & Support</Text>
           <TouchableOpacity 
             style={styles.contactItem}
-            onPress={() => openLink('mailto:support@leysamanglers.com')}
+            onPress={() => openLink('https://www.facebook.com/nikkorod03/')}
           >
-            <Ionicons name="mail" size={20} color={COLORS.primary} />
-            <Text style={styles.contactText}>support@leysamanglers.com</Text>
+            <Ionicons name="logo-facebook" size={20} color={COLORS.primary} />
+            <Text style={styles.contactText}>Nikko Rodriguez Villas (pinduta)</Text>
           </TouchableOpacity>
         </View>
 
         {/* Credits */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Developed By</Text>
-          <Text style={styles.creditsText}>LeySam Anglers Development Team</Text>
-          <Text style={styles.creditsSubtext}>Built with React Native & Firebase</Text>
+          <Text style={styles.creditsText}>LeySam Anglers Development Team (ako la)</Text>
+          <Text style={styles.creditsSubtext}>HAHAHAHA</Text>
         </View>
 
-        {/* Legal */}
-        <View style={styles.section}>
-          <Text style={styles.legalText}>© 2025 LeySam Anglers. All rights reserved.</Text>
-        </View>
+       
       </View>
     </ScrollView>
   );
@@ -104,17 +102,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: SIZES.padding * 3,
   },
-  logoPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
     marginBottom: SIZES.margin * 2,
-  },
-  logoText: {
-    fontSize: 50,
   },
   appName: {
     fontSize: SIZES.title,

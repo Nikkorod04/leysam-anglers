@@ -1,10 +1,13 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 import { COLORS, SIZES } from '../constants/theme';
+import { Ionicons } from '@expo/vector-icons';
 
-export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
+export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation: tabNavigation }) => {
+  const navigation = useNavigation<any>();
   const { user, logout } = useAuth();
 
   const handleLogout = () => {
@@ -30,7 +33,11 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             {user?.photoURL ? (
-              <View style={styles.avatar} />
+              <Image 
+                source={{ uri: user.photoURL }} 
+                style={styles.avatar}
+                resizeMode="cover"
+              />
             ) : (
               <View style={[styles.avatar, styles.avatarPlaceholder]}>
                 <Text style={styles.avatarText}>
@@ -46,17 +53,26 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
             <Text style={styles.menuText}>Edit Profile</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('MyFishingSpots')}
+          >
             <Text style={styles.menuText}>My Fishing Spots</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('MyCatchReports')}
+          >
             <Text style={styles.menuText}>My Catch Reports</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
@@ -65,17 +81,18 @@ export const ProfileScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Settings</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuText}>Notifications</Text>
-            <Text style={styles.menuArrow}>›</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('Privacy')}
+          >
             <Text style={styles.menuText}>Privacy</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('About')}
+          >
             <Text style={styles.menuText}>About</Text>
             <Text style={styles.menuArrow}>›</Text>
           </TouchableOpacity>

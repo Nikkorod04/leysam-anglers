@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 // Auth Screens
 import { LoginScreen } from '../screens/LoginScreen';
 import { SignupScreen } from '../screens/SignupScreen';
+import { EmailVerificationScreen } from '../screens/EmailVerificationScreen';
 
 // Main Screens
 import { MapScreen } from '../screens/MapScreen';
@@ -17,10 +18,15 @@ import { FeedScreen } from '../screens/FeedScreen';
 import { AddSpotScreen } from '../screens/AddSpotScreen';
 import { AddReportScreen } from '../screens/AddReportScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { SpotDetailScreen } from '../screens/SpotDetailScreen';
 import { AdminScreen } from '../screens/AdminScreen';
 import { AboutScreen } from '../screens/AboutScreen';
 import { ManualScreen } from '../screens/ManualScreen';
+import { DonateScreen } from '../screens/DonateScreen';
+import { MyFishingSpotsScreen } from '../screens/MyFishingSpotsScreen';
+import { MyCatchReportsScreen } from '../screens/MyCatchReportsScreen';
+import { PrivacyScreen } from '../screens/PrivacyScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -73,6 +79,19 @@ const HeaderMenu: React.FC<{ navigation: any }> = ({ navigation }) => {
               <Ionicons name="book-outline" size={24} color={COLORS.text} />
               <Text style={styles.menuItemText}>App Manual</Text>
             </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('Donate');
+              }}
+            >
+              <Ionicons name="heart-outline" size={24} color={COLORS.primary} />
+              <Text style={[styles.menuItemText, { color: COLORS.primary }]}>Donate</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -121,7 +140,21 @@ const MainTabs = () => {
         component={MapScreen}
         options={{
           title: 'Fishing Spots',
-          tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>🗺️</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <View style={{ position: 'relative', width: size, height: size }}>
+              <Ionicons name="location" size={size} color={color} />
+              <Ionicons 
+                name="fish" 
+                size={size * 0.5} 
+                color={color}
+                style={{ 
+                  position: 'absolute', 
+                  bottom: -2, 
+                  right: -2,
+                }} 
+              />
+            </View>
+          ),
         }}
       />
       <Tab.Screen
@@ -129,7 +162,9 @@ const MainTabs = () => {
         component={FeedScreen}
         options={{
           title: 'Catch Reports',
-          tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>🐟</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
+          ),
         }}
       />
       {isAdmin && (
@@ -138,7 +173,9 @@ const MainTabs = () => {
           component={AdminScreen}
           options={{
             title: 'Admin',
-            tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>🛡️</Text>,
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+            ),
           }}
         />
       )}
@@ -147,7 +184,9 @@ const MainTabs = () => {
         component={ProfileScreen}
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Text style={{ fontSize: size, color }}>👤</Text>,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
@@ -203,10 +242,60 @@ const MainStack = () => {
         }}
       />
       <Stack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{
+          title: 'Edit Profile',
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: COLORS.surface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
         name="Manual"
         component={ManualScreen}
         options={{
           title: 'App Manual',
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: COLORS.surface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
+        name="Donate"
+        component={DonateScreen}
+        options={{
+          title: 'Donate',
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: COLORS.surface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
+        name="MyFishingSpots"
+        component={MyFishingSpotsScreen}
+        options={{
+          title: 'My Fishing Spots',
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: COLORS.surface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
+        name="MyCatchReports"
+        component={MyCatchReportsScreen}
+        options={{
+          title: 'My Catch Reports',
+          headerStyle: { backgroundColor: COLORS.primary },
+          headerTintColor: COLORS.surface,
+          headerTitleStyle: { fontWeight: 'bold' },
+        }}
+      />
+      <Stack.Screen
+        name="Privacy"
+        component={PrivacyScreen}
+        options={{
+          title: 'Privacy Policy',
           headerStyle: { backgroundColor: COLORS.primary },
           headerTintColor: COLORS.surface,
           headerTitleStyle: { fontWeight: 'bold' },
@@ -219,12 +308,26 @@ const MainStack = () => {
 export const AppNavigator = () => {
   const { user, loading } = useAuth();
 
+  console.log('AppNavigator - User:', user?.email, 'Verified:', user?.isVerified);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
+    );
+  }
+
+  // Show verification screen if user is logged in but email not verified
+  if (user && !user.isVerified) {
+    console.log('Showing verification screen for:', user.email);
+    return (
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
     );
   }
 

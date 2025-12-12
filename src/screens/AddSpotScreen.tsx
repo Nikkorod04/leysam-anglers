@@ -27,6 +27,16 @@ import {
   validateSpotContent, 
   checkDuplicateSpot 
 } from '../services/spamPrevention';
+import { compressImage } from '../services/imageCompression';
+import { validateFishingSpotContent, validateSpecies } from '../services/contentValidation';
+
+const FISHING_TIME_OPTIONS = [
+  'Aga la',
+  'Kulop la',
+  'Magkulop',
+  'Gab e',
+  'Anytime',
+];
 
 export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuth();
@@ -34,6 +44,7 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   const [description, setDescription] = useState('');
   const [fishTypes, setFishTypes] = useState('');
   const [bestTime, setBestTime] = useState('');
+  const [showTimeDropdown, setShowTimeDropdown] = useState(false);
   const [images, setImages] = useState<string[]>([]);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -65,6 +76,11 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   };
 
   const pickImage = async () => {
+    if (images.length >= 2) {
+      Alert.alert('Limit Reached', 'You can only upload up to 2 images');
+      return;
+    }
+
     const hasPermission = await requestPermissions();
     if (!hasPermission) {
       Alert.alert('Permission Required', 'Please grant camera and media library permissions');
@@ -79,7 +95,14 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
     if (!result.canceled) {
       const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages]);
+      const remainingSlots = 2 - images.length;
+      const imagesToAdd = newImages.slice(0, remainingSlots);
+      
+      if (newImages.length > remainingSlots) {
+        Alert.alert('Limit Reached', `Only ${remainingSlots} image(s) can be added. Maximum is 2 images.`);
+      }
+      
+      setImages([...images, ...imagesToAdd]);
     }
   };
 
@@ -152,11 +175,12 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
   const uploadImages = async (images: string[]): Promise<string[]> => {
     const uploadPromises = images.map(async (imageUri) => {
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
+      // Compress image before uploading to save storage and bandwidth
+      const compressedBlob = await compressImage(imageUri);
+      
       const filename = `spots/${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
       const storageRef = ref(storage, filename);
-      await uploadBytes(storageRef, blob);
+      await uploadBytes(storageRef, compressedBlob);
       return await getDownloadURL(storageRef);
     });
 
@@ -166,6 +190,20 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
   const handleSubmit = async () => {
     if (!name || !description || !fishTypes || !bestTime) {
       Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    // Validate name and description
+    const contentValidation = validateFishingSpotContent(name, description);
+    if (!contentValidation.valid) {
+      Alert.alert('Invalid Content', contentValidation.error);
+      return;
+    }
+
+    // Validate fish types/species
+    const speciesValidation = validateSpecies(fishTypes);
+    if (!speciesValidation.valid) {
+      Alert.alert('Invalid Species', speciesValidation.error);
       return;
     }
 
@@ -181,10 +219,10 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
 
     setLoading(true);
     try {
-      // Validate content
-      const contentValidation = validateSpotContent(name, description, images);
-      if (!contentValidation.valid) {
-        Alert.alert('Validation Error', contentValidation.reason);
+      // Validate content with spam prevention
+      const contentValidation2 = validateSpotContent(name, description, images);
+      if (!contentValidation2.valid) {
+        Alert.alert('Validation Error', contentValidation2.reason);
         setLoading(false);
         return;
       }
@@ -253,36 +291,86 @@ export const AddSpotScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
       <View style={styles.content}>
         <Text style={styles.title}>Add Fishing Spot</Text>
 
-        <Input
-          label="Spot Name"
-          placeholder="e.g., Tacloban Bay"
-          value={name}
-          onChangeText={setName}
-        />
+        <View style={styles.inputWrapper}>
+          <View style={styles.labelWithCount}>
+            <Text style={styles.label}>Spot Name</Text>
+            <Text style={styles.charCount}>{name.length}/50</Text>
+          </View>
+          <Input
+            placeholder="Ngaran it spot syempre"
+            value={name}
+            onChangeText={setName}
+            maxLength={50}
+          />
+          <Text style={styles.helperText}>3-50 characters</Text>
+        </View>
 
-        <Input
-          label="Description"
-          placeholder="Describe the fishing spot"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-          numberOfLines={4}
-          style={styles.textArea}
-        />
+        <View style={styles.inputWrapper}>
+          <View style={styles.labelWithCount}>
+            <Text style={styles.label}>Description</Text>
+            <Text style={styles.charCount}>{description.length}/300</Text>
+          </View>
+          <Input
+            placeholder="Describe the fishing spot"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+            maxLength={300}
+            style={styles.textArea}
+          />
+          <Text style={styles.helperText}>10-300 characters</Text>
+        </View>
 
         <Input
           label="Fish Types (comma-separated)"
-          placeholder="e.g., Tuna, Mackerel, Grouper"
+          placeholder="Tingag, Barracuda, Bolinao kun ano la"
           value={fishTypes}
           onChangeText={setFishTypes}
         />
 
-        <Input
-          label="Best Fishing Time"
-          placeholder="e.g., Early morning, 5-8 AM"
-          value={bestTime}
-          onChangeText={setBestTime}
-        />
+        <View style={styles.section}>
+          <Text style={styles.label}>Best Fishing Time</Text>
+          <TouchableOpacity
+            style={styles.dropdownButton}
+            onPress={() => setShowTimeDropdown(!showTimeDropdown)}
+          >
+            <Text style={[styles.dropdownButtonText, !bestTime && styles.placeholder]}>
+              {bestTime || 'Select a time'}
+            </Text>
+            <Ionicons
+              name={showTimeDropdown ? 'chevron-up' : 'chevron-down'}
+              size={20}
+              color={COLORS.primary}
+            />
+          </TouchableOpacity>
+          {showTimeDropdown && (
+            <View style={styles.dropdown}>
+              {FISHING_TIME_OPTIONS.map((time) => (
+                <TouchableOpacity
+                  key={time}
+                  style={[
+                    styles.dropdownItem,
+                    bestTime === time && styles.dropdownItemActive,
+                  ]}
+                  onPress={() => {
+                    setBestTime(time);
+                    setShowTimeDropdown(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      bestTime === time && styles.dropdownItemActiveText,
+                    ]}
+                  >
+                    {time}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
@@ -394,6 +482,30 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginBottom: SIZES.margin * 2,
   },
+  inputWrapper: {
+    marginBottom: SIZES.margin * 1.5,
+  },
+  labelWithCount: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.margin / 2,
+  },
+  label: {
+    fontSize: SIZES.base,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  charCount: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  helperText: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin / 2,
+  },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
@@ -476,5 +588,55 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: SIZES.margin,
     textAlign: 'center',
+  },
+  label: {
+    fontSize: SIZES.base,
+    fontWeight: '600',
+    color: COLORS.text,
+    marginBottom: SIZES.margin / 2,
+  },
+  dropdownButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.surface,
+    marginBottom: SIZES.margin,
+  },
+  dropdownButtonText: {
+    fontSize: SIZES.base,
+    color: COLORS.text,
+  },
+  placeholder: {
+    color: COLORS.textSecondary,
+  },
+  dropdown: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius,
+    backgroundColor: COLORS.surface,
+    marginBottom: SIZES.margin,
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    paddingHorizontal: SIZES.padding,
+    paddingVertical: SIZES.padding * 0.75,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  dropdownItemActive: {
+    backgroundColor: COLORS.primary + '20',
+  },
+  dropdownItemText: {
+    fontSize: SIZES.base,
+    color: COLORS.text,
+  },
+  dropdownItemActiveText: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
 });

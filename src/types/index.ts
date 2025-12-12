@@ -1,12 +1,11 @@
 export interface User {
   id: string;
   email: string;
-  displayName: string;
+  displayName?: string;
   photoURL?: string;
-  role: 'user' | 'admin' | 'moderator';
   isVerified: boolean;
-  isBanned: boolean;
   createdAt: Date;
+  role: 'user' | 'moderator' | 'admin';
 }
 
 export interface FishingSpot {
@@ -21,7 +20,7 @@ export interface FishingSpot {
   fishTypes: string[];
   bestTime: string;
   images: string[];
-  likes: string[]; // array of user IDs
+  likes: string[];
   isHidden: boolean;
   isFlagged: boolean;
   flagCount: number;
@@ -35,31 +34,21 @@ export interface CatchReport {
   userId: string;
   userName: string;
   userPhoto?: string;
-  spotId?: string;
-  spotName?: string;
   title: string;
   description: string;
   fishType: string;
-  weight?: string;
-  length?: string;
+  weight?: number;
+  length?: number;
+  spotName?: string;
+  latitude?: number;
+  longitude?: number;
   images: string[];
-  likes: string[]; // array of user IDs
-  comments: Comment[];
-  isHidden: boolean;
+  likes: string[];
   isFlagged: boolean;
   flagCount: number;
   reportIds: string[];
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface Comment {
-  id: string;
-  userId: string;
-  userName: string;
-  userPhoto?: string;
-  text: string;
-  createdAt: Date;
 }
 
 export interface Report {
@@ -82,11 +71,4 @@ export interface UserActivity {
   spotsCreatedToday: number;
   spotsCreatedThisWeek: number;
   totalReports: number;
-}
-
-export interface Region {
-  latitude: number;
-  longitude: number;
-  latitudeDelta: number;
-  longitudeDelta: number;
 }

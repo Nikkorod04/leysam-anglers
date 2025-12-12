@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,17 +11,67 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { COLORS, SIZES } from '../constants/theme';
+import { validateEmail, validatePassword } from '../services/contentValidation';
 
 export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const { signIn } = useAuth();
+
+  // Load saved credentials on mount
+  useEffect(() => {
+    loadSavedCredentials();
+  }, []);
+
+  const loadSavedCredentials = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('rememberedEmail');
+      const savedPassword = await AsyncStorage.getItem('rememberedPassword');
+      const wasRemembered = await AsyncStorage.getItem('rememberMe');
+      
+      if (wasRemembered === 'true' && savedEmail && savedPassword) {
+        setEmail(savedEmail);
+        setPassword(savedPassword);
+        setRememberMe(true);
+        
+        // Automatically log in
+        setLoading(true);
+        try {
+          await signIn(savedEmail, savedPassword);
+        } catch (error: any) {
+          console.error('Auto-login error:', error);
+          // If auto-login fails, just show the form with credentials filled
+          setLoading(false);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved credentials:', error);
+    }
+  };
+
+  const saveCredentials = async () => {
+    try {
+      if (rememberMe) {
+        await AsyncStorage.setItem('rememberedEmail', email);
+        await AsyncStorage.setItem('rememberedPassword', password);
+        await AsyncStorage.setItem('rememberMe', 'true');
+      } else {
+        await AsyncStorage.removeItem('rememberedEmail');
+        await AsyncStorage.removeItem('rememberedPassword');
+        await AsyncStorage.removeItem('rememberMe');
+      }
+    } catch (error) {
+      console.error('Error saving credentials:', error);
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -29,9 +79,24 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      Alert.alert('Invalid Email', emailValidation.error);
+      return;
+    }
+
+    // Validate password length
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      Alert.alert('Invalid Password', passwordValidation.error);
+      return;
+    }
+
     setLoading(true);
     try {
       await signIn(email.trim(), password);
+      await saveCredentials();
       // Don't manually setLoading(false) here - let auth state handle it
     } catch (error: any) {
       console.error('Login error:', error);
@@ -68,11 +133,7 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              {/* TODO: Replace with your actual logo image */}
-              {/* <Image source={require('../../assets/logo.png')} style={styles.logo} /> */}
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoPlaceholderText}>LOGO</Text>
-              </View>
+              <Image source={require('../../assets/nikko.png')} style={styles.logo} />
             </View>
             <Text style={styles.appTitle}>LeySam Anglers</Text>
             <Text style={styles.tagline}>Connect. Share. Fish.</Text>
@@ -109,19 +170,30 @@ export const LoginScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   secureTextEntry={!showPassword}
                   style={styles.inputWithIcon}
                 />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons 
+                    name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                    size={22} 
+                    color={COLORS.textSecondary} 
+                  />
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity
-                style={styles.showPasswordContainer}
-                onPress={() => setShowPassword(!showPassword)}
+                style={styles.rememberMeContainer}
+                onPress={() => setRememberMe(!rememberMe)}
                 activeOpacity={0.7}
               >
-                <View style={styles.checkbox}>
-                  {showPassword && (
-                    <Ionicons name="checkmark" size={14} color={COLORS.primary} />
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && (
+                    <Ionicons name="checkmark" size={16} color={COLORS.surface} />
                   )}
                 </View>
-                <Text style={styles.showPasswordText}>Show password</Text>
+                <Text style={styles.rememberMeText}>Remember me</Text>
               </TouchableOpacity>
             </View>
 
@@ -251,37 +323,40 @@ const styles = StyleSheet.create({
   },
   inputWithIcon: {
     paddingLeft: 48,
+    paddingRight: 48,
   },
-  passwordContainer: {
-    position: 'relative',
+  eyeIcon: {
+    position: 'absolute',
+    right: 12,
+    top: 12,
+    padding: 4,
+    zIndex: 10,
   },
-  showPasswordContainer: {
+  rememberMeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 12,
+    marginTop: SIZES.margin,
+    marginBottom: SIZES.margin / 2,
   },
   checkbox: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     borderWidth: 2,
     borderColor: COLORS.border,
-    borderRadius: 4,
-    marginRight: 8,
+    borderRadius: 5,
+    marginRight: 10,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.backgroundLight,
   },
-  showPasswordText: {
-    fontSize: SIZES.sm,
-    color: COLORS.textSecondary,
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
   },
-  eyeIcon: {
-    position: 'absolute',
-    right: 16,
-    top: 17,
-    padding: 8,
-    zIndex: 10,
+  rememberMeText: {
+    fontSize: SIZES.sm + 1,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
   },
   // Button
   loginButton: {

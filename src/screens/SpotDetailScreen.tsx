@@ -8,7 +8,8 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-  TextInput,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from 'firebase/firestore';
@@ -17,8 +18,9 @@ import { useAuth } from '../context/AuthContext';
 import { FishingSpot } from '../types';
 import { COLORS, SIZES } from '../constants/theme';
 import { reportContent } from '../services/reportService';
+// import { BannerAdComponent } from '../components/BannerAd'; // Only works in EAS builds, not Expo Go
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export const SpotDetailScreen: React.FC<{ route: any; navigation: any }> = ({
   route,
@@ -173,123 +175,225 @@ export const SpotDetailScreen: React.FC<{ route: any; navigation: any }> = ({
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Image Gallery */}
-      {localSpot.images.length > 0 && (
-        <View style={styles.imageContainer}>
-          <ScrollView
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleImageScroll}
-            scrollEventThrottle={16}
-          >
-            {localSpot.images.map((imageUri, index) => (
-              <Image key={index} source={{ uri: imageUri }} style={styles.image} />
-            ))}
-          </ScrollView>
-          {localSpot.images.length > 1 && (
-            <View style={styles.pagination}>
-              {localSpot.images.map((_, index) => (
-                <View
-                  key={index}
-                  style={[
-                    styles.paginationDot,
-                    index === currentImageIndex && styles.paginationDotActive,
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            {localSpot.userPhoto ? (
-              <Image source={{ uri: localSpot.userPhoto }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Text style={styles.avatarText}>
-                  {localSpot.userName.charAt(0).toUpperCase()}
+    <View style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Image Gallery */}
+        {localSpot.images.length > 0 && (
+          <View style={styles.heroContainer}>
+            <FlatList
+              data={localSpot.images}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleImageScroll}
+              scrollEventThrottle={16}
+              keyExtractor={(item, index) => `image-${index}`}
+              renderItem={({ item }) => (
+                <View style={styles.imageSlide}>
+                  <Image source={{ uri: item }} style={styles.heroImage} />
+                  <View style={styles.imageOverlay} />
+                </View>
+              )}
+            />
+            {localSpot.images.length > 1 && (
+              <View style={styles.paginationContainer}>
+                {localSpot.images.map((_, index) => (
+                  <View
+                    key={index}
+                    style={[
+                      styles.paginationDot,
+                      index === currentImageIndex && styles.paginationDotActive,
+                    ]}
+                  />
+                ))}
+              </View>
+            )}
+            
+            {/* Image Counter Badge */}
+            {localSpot.images.length > 1 && (
+              <View style={styles.imageCountBadge}>
+                <Ionicons name="images" size={16} color={COLORS.surface} />
+                <Text style={styles.imageCountText}>
+                  {currentImageIndex + 1}/{localSpot.images.length}
                 </Text>
               </View>
             )}
-            <View style={styles.userInfo}>
+          </View>
+        )}
+
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          {/* Spot Title Card */}
+          <View style={styles.titleCard}>
+            <View style={styles.titleHeader}>
+              <View style={styles.titleIconContainer}>
+                <Ionicons name="location" size={28} color={COLORS.primary} />
+              </View>
+              <View style={styles.titleTextContainer}>
+                <Text style={styles.spotName}>{localSpot.name}</Text>
+                <View style={styles.metaRow}>
+                  <Ionicons name="time-outline" size={14} color={COLORS.textSecondary} />
+                  <Text style={styles.dateText}>
+                    Added {localSpot.createdAt.toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Action Buttons Row */}
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity 
+                style={[styles.actionButtonPrimary, isLiked && styles.actionButtonLiked]} 
+                onPress={handleLike}
+              >
+                <Ionicons
+                  name={isLiked ? "fish" : "fish-outline"} 
+                  size={22} 
+                  color={isLiked ? COLORS.surface : COLORS.primary} 
+                />
+                <Text style={[styles.actionButtonText, isLiked && styles.actionButtonTextLiked]}>
+                  {localSpot.likes.length}
+                </Text>
+              </TouchableOpacity>
+
+              {user && user.id !== localSpot.userId && (
+                <TouchableOpacity 
+                  style={styles.actionButtonSecondary} 
+                  onPress={handleReport}
+                >
+                  <Ionicons name="flag-outline" size={20} color={COLORS.textSecondary} />
+                </TouchableOpacity>
+              )}
+
+              {isAdmin && (
+                <TouchableOpacity 
+                  style={styles.actionButtonDanger} 
+                  onPress={handleDelete}
+                >
+                  <Ionicons name="trash-outline" size={20} color={COLORS.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+
+          {/* Posted By Card */}
+          <View style={styles.infoCard}>
+            <Text style={styles.cardLabel}>POSTED BY</Text>
+            <View style={styles.userRow}>
+              {localSpot.userPhoto ? (
+                <Image source={{ uri: localSpot.userPhoto }} style={styles.userAvatar} />
+              ) : (
+                <View style={[styles.userAvatar, styles.avatarPlaceholder]}>
+                  <Text style={styles.avatarText}>
+                    {localSpot.userName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.userName}>{localSpot.userName}</Text>
-              <Text style={styles.date}>
-                {localSpot.createdAt.toLocaleDateString()}
-              </Text>
+            </View>
+          </View>
+
+          {/* Description Card */}
+          {localSpot.description && (
+            <View style={styles.infoCard}>
+              <View style={styles.cardHeader}>
+                <Ionicons name="document-text" size={22} color={COLORS.primary} />
+                <Text style={styles.cardTitle}>Description</Text>
+              </View>
+              <Text style={styles.descriptionText}>{localSpot.description}</Text>
+            </View>
+          )}
+
+          {/* Fish Types Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="fish" size={22} color={COLORS.primary} />
+              <Text style={styles.cardTitle}>Fish Species</Text>
+            </View>
+            <View style={styles.fishTypesGrid}>
+              {localSpot.fishTypes.map((fish, index) => (
+                <View key={index} style={styles.fishChip}>
+                  <Ionicons name="fish-outline" size={16} color={COLORS.primary} />
+                  <Text style={styles.fishChipText}>{fish}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Best Time Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="time" size={22} color={COLORS.primary} />
+              <Text style={styles.cardTitle}>Best Fishing Time</Text>
+            </View>
+            <View style={styles.bestTimeContainer}>
+              <View style={styles.bestTimeChip}>
+                <Ionicons name="sunny" size={18} color="#FDB022" />
+                <Text style={styles.bestTimeText}>{localSpot.bestTime}</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Location Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeader}>
+              <Ionicons name="map" size={22} color={COLORS.primary} />
+              <Text style={styles.cardTitle}>Coordinates</Text>
+            </View>
+            <View style={styles.coordinatesContainer}>
+              <View style={styles.coordinateRow}>
+                <View style={styles.coordinateIcon}>
+                  <Text style={styles.coordinateIconText}>LAT</Text>
+                </View>
+                <Text style={styles.coordinateValue}>
+                  {localSpot.latitude.toFixed(6)}°
+                </Text>
+              </View>
+              <View style={styles.coordinateDivider} />
+              <View style={styles.coordinateRow}>
+                <View style={styles.coordinateIcon}>
+                  <Text style={styles.coordinateIconText}>LNG</Text>
+                </View>
+                <Text style={styles.coordinateValue}>
+                  {localSpot.longitude.toFixed(6)}°
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Stats Card */}
+          <View style={styles.statsCard}>
+            <View style={styles.statItem}>
+              <Ionicons name="fish" size={24} color={COLORS.primary} />
+              <Text style={styles.statNumber}>{localSpot.likes.length}</Text>
+              <Text style={styles.statLabel}>Likes</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Ionicons name="images" size={24} color={COLORS.primary} />
+              <Text style={styles.statNumber}>{localSpot.images.length}</Text>
+              <Text style={styles.statLabel}>Photos</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Ionicons name="fish" size={24} color="#4CAF50" />
+              <Text style={styles.statNumber}>{localSpot.fishTypes.length}</Text>
+              <Text style={styles.statLabel}>Species</Text>
             </View>
           </View>
         </View>
-
-        {/* Spot Name */}
-        <Text style={styles.spotName}>{localSpot.name}</Text>
-
-        {/* Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📝 Description</Text>
-          <Text style={styles.description}>{localSpot.description}</Text>
-        </View>
-
-        {/* Fish Types */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🐟 Fish Types</Text>
-          <View style={styles.fishContainer}>
-            {localSpot.fishTypes.map((fish, index) => (
-              <View key={index} style={styles.fishTag}>
-                <Text style={styles.fishTagText}>{fish}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Best Time */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⏰ Best Fishing Time</Text>
-          <Text style={styles.bestTime}>{localSpot.bestTime}</Text>
-        </View>
-
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📍 Location</Text>
-          <Text style={styles.coordinates}>
-            Latitude: {localSpot.latitude.toFixed(6)}
-          </Text>
-          <Text style={styles.coordinates}>
-            Longitude: {localSpot.longitude.toFixed(6)}
-          </Text>
-        </View>
-
-        {/* Like Button */}
-        <TouchableOpacity style={styles.likeButton} onPress={handleLike}>
-          <Text style={styles.likeIcon}>{isLiked ? '❤️' : '🤍'}</Text>
-          <Text style={styles.likeText}>
-            {localSpot.likes.length} {localSpot.likes.length === 1 ? 'Like' : 'Likes'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Report Button */}
-        {user && user.id !== localSpot.userId && (
-          <TouchableOpacity style={styles.reportButton} onPress={handleReport}>
-            <Ionicons name="flag-outline" size={20} color={COLORS.error} />
-            <Text style={styles.reportText}>Report this spot</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Admin Delete Button */}
-        {isAdmin && (
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={20} color={COLORS.surface} />
-            <Text style={styles.deleteText}>Delete Spot (Admin)</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+      
+      {/* Banner Ad - Only works in EAS builds, disabled for Expo Go */}
+      {/* <BannerAdComponent /> */}
+    </View>
   );
 };
 
@@ -298,54 +402,204 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  imageContainer: {
-    width: width,
-    height: 300,
-    backgroundColor: COLORS.border,
+  scrollView: {
+    flex: 1,
   },
-  image: {
+  heroContainer: {
     width: width,
-    height: 300,
+    height: width * 0.85,
+    backgroundColor: COLORS.backgroundLight,
+  },
+  imageSlide: {
+    width: width,
+    height: width * 0.85,
+  },
+  heroImage: {
+    width: '100%',
+    height: '100%',
     resizeMode: 'cover',
   },
-  pagination: {
+  imageOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  paginationContainer: {
     position: 'absolute',
-    bottom: 10,
-    width: '100%',
+    bottom: 16,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
   },
   paginationDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.surface,
-    marginHorizontal: 4,
-    opacity: 0.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
   },
   paginationDotActive: {
-    opacity: 1,
     backgroundColor: COLORS.primary,
+    width: 24,
   },
-  content: {
-    padding: SIZES.padding * 2,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.margin * 2,
-  },
-  headerLeft: {
+  imageCountBadge: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
   },
-  avatar: {
+  imageCountText: {
+    color: COLORS.surface,
+    fontSize: SIZES.sm,
+    fontWeight: '700',
+  },
+  contentContainer: {
+    padding: SIZES.padding * 1.5,
+    gap: SIZES.margin * 1.5,
+  },
+  titleCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius * 2,
+    padding: SIZES.padding * 1.5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  titleHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SIZES.margin * 1.5,
+  },
+  titleIconContainer: {
     width: 50,
     height: 50,
     borderRadius: 25,
+    backgroundColor: COLORS.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: SIZES.margin,
+  },
+  titleTextContainer: {
+    flex: 1,
+  },
+  spotName: {
+    fontSize: SIZES.xl,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 6,
+    lineHeight: 28,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dateText: {
+    fontSize: SIZES.sm,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButtonPrimary: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: SIZES.radius * 1.5,
+    paddingVertical: 14,
+    gap: 8,
+  },
+  actionButtonLiked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  actionButtonText: {
+    fontSize: SIZES.base + 2,
+    fontWeight: '700',
+    color: COLORS.primary,
+  },
+  actionButtonTextLiked: {
+    color: COLORS.surface,
+  },
+  actionButtonSecondary: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionButtonDanger: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: COLORS.background,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius * 2,
+    padding: SIZES.padding * 1.5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardLabel: {
+    fontSize: SIZES.xs,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    letterSpacing: 1,
+    marginBottom: SIZES.margin,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.margin * 1.2,
+    gap: 10,
+  },
+  cardTitle: {
+    fontSize: SIZES.base + 2,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  userRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  userAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 2,
+    borderColor: COLORS.primary + '30',
   },
   avatarPlaceholder: {
     backgroundColor: COLORS.primary,
@@ -355,118 +609,124 @@ const styles = StyleSheet.create({
   avatarText: {
     color: COLORS.surface,
     fontSize: SIZES.lg,
-    fontWeight: 'bold',
-  },
-  userInfo: {
-    flex: 1,
+    fontWeight: '800',
   },
   userName: {
-    fontSize: SIZES.base,
-    fontWeight: '600',
+    fontSize: SIZES.base + 2,
+    fontWeight: '700',
     color: COLORS.text,
   },
-  date: {
-    fontSize: SIZES.sm,
+  descriptionText: {
+    fontSize: SIZES.base,
     color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  spotName: {
-    fontSize: SIZES.title,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-    marginBottom: SIZES.margin * 2,
-  },
-  section: {
-    marginBottom: SIZES.margin * 2,
-  },
-  sectionTitle: {
-    fontSize: SIZES.lg,
-    fontWeight: '600',
-    color: COLORS.text,
-    marginBottom: SIZES.margin,
-  },
-  description: {
-    fontSize: SIZES.base,
-    color: COLORS.text,
     lineHeight: 24,
   },
-  fishContainer: {
+  fishTypesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  fishChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '15',
+    borderWidth: 1,
+    borderColor: COLORS.primary + '30',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    gap: 8,
+  },
+  fishChipText: {
+    fontSize: SIZES.sm + 1,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  bestTimeContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  fishTag: {
-    backgroundColor: COLORS.secondary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: SIZES.margin,
-    marginBottom: SIZES.margin,
-  },
-  fishTagText: {
-    color: COLORS.surface,
-    fontSize: SIZES.base,
-    fontWeight: '600',
-  },
-  bestTime: {
-    fontSize: SIZES.base,
-    color: COLORS.text,
-    lineHeight: 24,
-  },
-  coordinates: {
-    fontSize: SIZES.sm,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
-  likeButton: {
+  bestTimeChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.surface,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    paddingVertical: SIZES.padding,
-    marginTop: SIZES.margin,
-  },
-  likeIcon: {
-    fontSize: 24,
-    marginRight: SIZES.margin,
-  },
-  likeText: {
-    fontSize: SIZES.base,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  reportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.backgroundLight,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
+    gap: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: SIZES.radius,
-    paddingVertical: 12,
-    marginTop: SIZES.margin,
   },
-  reportText: {
-    fontSize: SIZES.sm,
-    color: COLORS.error,
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  deleteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.error,
-    borderRadius: SIZES.radius,
-    paddingVertical: 14,
-    marginTop: SIZES.margin,
-  },
-  deleteText: {
+  bestTimeText: {
     fontSize: SIZES.base,
-    color: COLORS.surface,
-    marginLeft: 8,
     fontWeight: '600',
+    color: COLORS.text,
+  },
+  coordinatesContainer: {
+    flexDirection: 'row',
+    gap: SIZES.margin,
+  },
+  coordinateRow: {
+    flex: 1,
+    backgroundColor: COLORS.backgroundLight,
+    borderRadius: SIZES.radius * 1.5,
+    padding: SIZES.padding,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  coordinateIcon: {
+    backgroundColor: COLORS.primary + '20',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  coordinateIconText: {
+    fontSize: SIZES.xs,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+  },
+  coordinateValue: {
+    fontSize: SIZES.sm + 1,
+    fontWeight: '700',
+    color: COLORS.text,
+  },
+  coordinateDivider: {
+    width: 1,
+    backgroundColor: COLORS.border,
+  },
+  statsCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius * 2,
+    padding: SIZES.padding * 1.5,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: SIZES.margin,
+  },
+  statItem: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  statNumber: {
+    fontSize: SIZES.xl,
+    fontWeight: '800',
+    color: COLORS.text,
+  },
+  statLabel: {
+    fontSize: SIZES.sm,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 60,
+    backgroundColor: COLORS.border,
   },
 });

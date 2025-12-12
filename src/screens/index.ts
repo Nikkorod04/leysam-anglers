@@ -6,3 +6,4 @@ export { AddSpotScreen } from './AddSpotScreen';
 export { AddReportScreen } from './AddReportScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { SpotDetailScreen } from './SpotDetailScreen';
+export { DonateScreen } from './DonateScreen';

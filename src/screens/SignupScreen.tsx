@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { COLORS, SIZES } from '../constants/theme';
+import { validateEmail, validatePassword, validateDisplayName } from '../services/contentValidation';
 
 export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -31,21 +32,42 @@ export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
       return;
     }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+    // Validate display name first
+    const displayNameValidation = validateDisplayName(displayName);
+    if (!displayNameValidation.valid) {
+      Alert.alert('Invalid Display Name', displayNameValidation.error);
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    // Validate email format
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.valid) {
+      Alert.alert('Invalid Email', emailValidation.error);
+      return;
+    }
+
+    // Validate password length
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      Alert.alert('Invalid Password', passwordValidation.error);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match');
       return;
     }
 
     setLoading(true);
     try {
       await signUp(email.trim(), password, displayName.trim());
-      // Don't show alert - user will be automatically logged in
-      // The AuthContext will handle the navigation
+      // Show success message
+      Alert.alert(
+        'Account Created!',
+        'A verification email has been sent to your email address. Please verify your email to access the app.',
+        [{ text: 'OK' }]
+      );
+      // User will be shown the verification screen automatically
     } catch (error: any) {
       console.error('Signup error:', error);
       let errorMessage = error.message;
@@ -77,11 +99,7 @@ export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           {/* Logo Section */}
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
-              {/* TODO: Replace with your actual logo image */}
-              {/* <Image source={require('../../assets/logo.png')} style={styles.logo} /> */}
-              <View style={styles.logoPlaceholder}>
-                <Text style={styles.logoPlaceholderText}>LOGO</Text>
-              </View>
+              <Image source={require('../../assets/nikko.png')} style={styles.logo} />
             </View>
             <Text style={styles.appTitle}>LeySam Anglers</Text>
             <Text style={styles.tagline}>Connect. Share. Fish.</Text>
@@ -94,6 +112,10 @@ export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
             <View style={styles.inputsContainer}>
               <View style={styles.inputWrapper}>
+                <View style={styles.labelWithCount}>
+                  <Text style={styles.inputLabel}>Full Name</Text>
+                  <Text style={styles.charCount}>{displayName.length}/30</Text>
+                </View>
                 <View style={styles.inputIconContainer}>
                   <Ionicons name="person-outline" size={20} color={COLORS.textSecondary} />
                 </View>
@@ -101,8 +123,10 @@ export const SignupScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
                   placeholder="Full name"
                   value={displayName}
                   onChangeText={setDisplayName}
+                  maxLength={30}
                   style={styles.inputWithIcon}
                 />
+                <Text style={styles.helperText}>3-30 characters</Text>
               </View>
 
               <View style={styles.inputWrapper}>
@@ -309,6 +333,27 @@ const styles = StyleSheet.create({
   showPasswordText: {
     fontSize: SIZES.sm,
     color: COLORS.textSecondary,
+  },
+  labelWithCount: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.margin / 2,
+  },
+  inputLabel: {
+    fontSize: SIZES.sm,
+    color: COLORS.text,
+    fontWeight: '600',
+  },
+  charCount: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  helperText: {
+    fontSize: SIZES.xs,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin / 2,
   },
   // Button
   signupButton: {

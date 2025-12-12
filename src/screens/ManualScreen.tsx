@@ -4,6 +4,8 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
+  Linking,
 } from 'react-native';
 import { COLORS, SIZES } from '../constants/theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,8 +19,9 @@ export const ManualScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
 
         {/* Getting Started */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🚀 Getting Started</Text>
+          <Text style={styles.sectionTitle}>Getting Started</Text>
           <Text style={styles.text}>
+            
             Welcome to LeySam Anglers! This guide will help you discover fishing spots and share your catches with the community.
           </Text>
         </View>
@@ -69,14 +72,14 @@ export const ManualScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           <View style={styles.step}>
             <Text style={styles.stepTitle}>• View Reports</Text>
             <Text style={styles.stepText}>
-              See what other anglers have caught. Like and comment on their posts.
+              See what other anglers have caught. Like or "Fish on" on their posts.
             </Text>
           </View>
 
           <View style={styles.step}>
             <Text style={styles.stepTitle}>• Post Your Catch</Text>
             <Text style={styles.stepText}>
-              Tap the + button to share your catch. Add title, description, fish type, optional weight/length, and photos.
+              Tap the + button to share your catch. Add title, description, fish type, and a photo.
             </Text>
           </View>
 
@@ -126,50 +129,6 @@ export const ManualScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Profile */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="person" size={28} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Your Profile</Text>
-          </View>
-          
-          <View style={styles.step}>
-            <Text style={styles.stepTitle}>• View Your Activity</Text>
-            <Text style={styles.stepText}>
-              Access your profile to see your posted spots and catch reports.
-            </Text>
-          </View>
-
-          <View style={styles.step}>
-            <Text style={styles.stepTitle}>• Role Badge</Text>
-            <Text style={styles.stepText}>
-              Admin and Moderator roles are displayed with special badges.
-            </Text>
-          </View>
-        </View>
-
-        {/* Admin */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="shield" size={28} color={COLORS.primary} />
-            <Text style={styles.sectionTitle}>Admin Panel</Text>
-          </View>
-          
-          <View style={styles.step}>
-            <Text style={styles.stepTitle}>• For Admins & Moderators Only</Text>
-            <Text style={styles.stepText}>
-              Review flagged content, manage reports, and moderate the community.
-            </Text>
-          </View>
-
-          <View style={styles.step}>
-            <Text style={styles.stepTitle}>• Actions Available</Text>
-            <Text style={styles.stepText}>
-              Approve legitimate content, hide inappropriate posts, or delete spam permanently.
-            </Text>
-          </View>
-        </View>
-
         {/* Tips */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -190,9 +149,13 @@ export const ManualScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
         {/* Support */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Need Help?</Text>
-          <Text style={styles.text}>
-            If you encounter any issues or have questions, please contact support at support@leysamanglers.com
-          </Text>
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={() => Linking.openURL('https://www.facebook.com/nikkorod03/')}
+          >
+            <Ionicons name="logo-facebook" size={20} color={COLORS.primary} />
+            <Text style={styles.contactText}>Nikko Rodriguez Villas (pinduta)</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -275,5 +238,17 @@ const styles = StyleSheet.create({
     fontSize: SIZES.base,
     color: COLORS.text,
     marginBottom: SIZES.margin,
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SIZES.margin,
+    padding: SIZES.padding,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius,
+  },
+  contactText: {
+    fontSize: SIZES.base,
+    color: COLORS.text,
   },
 });

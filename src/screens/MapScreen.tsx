@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  Image,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Polygon } from 'react-native-maps';
 import { collection, onSnapshot, query } from 'firebase/firestore';
@@ -76,6 +77,7 @@ export const MapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
   const mapRef = React.useRef<MapView>(null);
   const [selectedSpotId, setSelectedSpotId] = useState<string | null>(null);
+  const lastMarkerPressRef = React.useRef<{ id: string; timestamp: number } | null>(null);
   
   // Map display settings
   const [showPOI, setShowPOI] = useState(true); // Points of Interest (landmarks, shops)
@@ -224,7 +226,20 @@ export const MapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   }, []);
 
   const handleMarkerPress = (spot: FishingSpot) => {
-    // Navigate to details when callout is pressed (second click)
+    // Debounce: prevent rapid marker presses within 500ms
+    const now = Date.now();
+    if (
+      lastMarkerPressRef.current &&
+      lastMarkerPressRef.current.id === spot.id &&
+      now - lastMarkerPressRef.current.timestamp < 500
+    ) {
+      return; // Ignore rapid repeated clicks on same marker
+    }
+
+    // Update last press timestamp
+    lastMarkerPressRef.current = { id: spot.id, timestamp: now };
+
+    // Navigate to details
     navigation.navigate('SpotDetail', { spot });
     setSelectedSpotId(null); // Reset selection after navigation
   };
@@ -289,11 +304,26 @@ export const MapScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
             title={spot.name}
             description={`🐟 ${spot.fishTypes.join(', ')}`}
             onPress={() => {
+              // Debounce marker press
+              const now = Date.now();
+              if (
+                lastMarkerPressRef.current &&
+                lastMarkerPressRef.current.id === spot.id &&
+                now - lastMarkerPressRef.current.timestamp < 500
+              ) {
+                return; // Ignore rapid repeated clicks
+              }
+              lastMarkerPressRef.current = { id: spot.id, timestamp: now };
               setSelectedSpotId(spot.id);
             }}
             onCalloutPress={() => handleMarkerPress(spot)}
-            pinColor={COLORS.secondary}
-          />
+          >
+            <Image
+              source={require('../../assets/fishing-marker.png')}
+              style={styles.markerImage}
+              resizeMode="contain"
+            />
+          </Marker>
         ))}
       </MapView>
 
@@ -468,5 +498,9 @@ const styles = StyleSheet.create({
     fontSize: 36,
     color: COLORS.surface,
     fontWeight: 'bold',
+  },
+  markerImage: {
+    width: 42,
+    height: 35,
   },
 });
