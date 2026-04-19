@@ -328,7 +328,7 @@ Main Flow:
 2. Check Firebase Console logs for backend errors
 3. Use React Native Debugger for debugging
 4. Test on both iOS and Android devices
-5. Keep Expo CLI updated: `npm install -g expo-cli@latest`
+5. Use `npx expo` commands for the latest Expo features
 
 ## 🎉 Success Criteria
 
@@ -346,4 +346,4 @@ The app is working correctly when:
 
 **Ready to deploy? Remember to update Firebase security rules before production!**
 
-Last Updated: October 30, 2025
+Last Updated: January 25, 2026

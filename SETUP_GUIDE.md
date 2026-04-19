@@ -7,8 +7,9 @@ This guide will walk you through setting up the LeySam Anglers app from scratch.
 Ensure you have installed:
 - ✅ Node.js (v16+): `node --version`
 - ✅ npm: `npm --version`
-- ✅ Expo CLI: `npm install -g expo-cli`
 - ✅ Expo Go app on your phone
+
+Note: Modern Expo projects use `npx expo` commands instead of globally installed expo-cli
 
 ## Step 2: Install Dependencies
 

@@ -21,195 +21,50 @@ A mobile application for anglers in Leyte and Samar, Philippines, to share and d
 - **React Native Maps**
 - **Expo Location & Image Picker**
 
-## Prerequisites
+## Quick Start
 
-Before you begin, ensure you have the following installed:
+**New to this project?** See [QUICKSTART.md](QUICKSTART.md) for a 5-minute setup guide!
+
+**Need detailed instructions?** See [SETUP_GUIDE.md](SETUP_GUIDE.md) for complete setup walkthrough.
+
+### Prerequisites
 
 - Node.js (v16 or higher)
 - npm or yarn
-- Expo CLI: `npm install -g expo-cli`
 - Expo Go app on your mobile device ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
 
-## Firebase Setup
+### Installation Steps
 
-1. **Create a Firebase Project**
-   - Go to [Firebase Console](https://console.firebase.google.com/)
-   - Click "Add project"
-   - Follow the setup wizard
-
-2. **Enable Authentication**
-   - In Firebase Console, go to Authentication > Sign-in method
-   - Enable "Email/Password" provider
-
-3. **Create Firestore Database**
-   - Go to Firestore Database > Create database
-   - Start in test mode (or production mode with security rules)
-   - Choose a location close to Philippines (e.g., asia-southeast1)
-
-4. **Enable Firebase Storage**
-   - Go to Storage > Get Started
-   - Start in test mode (or production mode with security rules)
-
-5. **Get Firebase Configuration**
-   - Go to Project Settings > General
-   - Scroll to "Your apps" section
-   - Click on web icon (</>)
-   - Copy the firebaseConfig object
-
-6. **Update Firebase Config**
-   - Open `src/services/firebase.ts`
-   - Replace the placeholder values with your Firebase config:
-   ```typescript
-   const firebaseConfig = {
-     apiKey: "YOUR_API_KEY",
-     authDomain: "YOUR_AUTH_DOMAIN",
-     projectId: "YOUR_PROJECT_ID",
-     storageBucket: "YOUR_STORAGE_BUCKET",
-     messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-     appId: "YOUR_APP_ID"
-   };
-   ```
-
-## Installation
-
-1. **Clone or navigate to the project directory**
-   ```bash
-   cd "Leysam Anglers"
-   ```
-
-2. **Install dependencies**
+1. **Install dependencies**
    ```bash
    npm install
    ```
 
-3. **Configure Firebase** (see Firebase Setup section above)
+2. **Configure Firebase**
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+   - Enable Authentication (Email/Password)
+   - Create Firestore Database (asia-southeast1)
+   - Enable Firebase Storage
+   - Update `src/services/firebase.ts` with your credentials
+   
+   👉 See [FIREBASE_CONFIG.md](FIREBASE_CONFIG.md) for detailed Firebase setup
 
-4. **Start the development server**
+3. **Start the app**
    ```bash
    npm start
    ```
 
-5. **Run on your device**
-   - Open Expo Go app on your mobile device
-   - Scan the QR code shown in the terminal or browser
-   - The app will load on your device
+4. **Open on your device**
+   - Scan the QR code with Expo Go app
 
-## Running on Emulator/Simulator
+## Documentation
 
-### Android
-```bash
-npm run android
-```
-*Requires Android Studio and Android emulator setup*
-
-### iOS (macOS only)
-```bash
-npm run ios
-```
-*Requires Xcode and iOS simulator*
-
-## Project Structure
-
-```
-leysam-anglers/
-├── src/
-│   ├── components/       # Reusable UI components
-│   │   ├── Button.tsx
-│   │   └── Input.tsx
-│   ├── constants/        # App constants and theme
-│   │   └── theme.ts
-│   ├── context/          # React Context providers
-│   │   └── AuthContext.tsx
-│   ├── navigation/       # Navigation configuration
-│   │   └── AppNavigator.tsx
-│   ├── screens/          # App screens
-│   │   ├── LoginScreen.tsx
-│   │   ├── SignupScreen.tsx
-│   │   ├── MapScreen.tsx
-│   │   ├── AddSpotScreen.tsx
-│   │   ├── FeedScreen.tsx
-│   │   ├── AddReportScreen.tsx
-│   │   └── ProfileScreen.tsx
-│   ├── services/         # External services
-│   │   └── firebase.ts
-│   └── types/            # TypeScript type definitions
-│       └── index.ts
-├── App.tsx               # Root component
-├── app.json              # Expo configuration
-└── package.json          # Dependencies
-```
-
-## Key Features Guide
-
-### 1. Authentication
-- Users can sign up with email and password
-- Login with existing credentials
-- Secure authentication via Firebase Auth
-
-### 2. Map View
-- Interactive map centered on Leyte and Samar
-- Green markers indicate fishing spots
-- Tap markers to view spot details
-- Blue "+" button to add new spots
-
-### 3. Adding Fishing Spots
-- Capture current GPS location
-- Add spot name, description, and fish types
-- Specify best fishing times
-- Upload multiple photos
-- All spots visible to community
-
-### 4. Catch Reports Feed
-- Social media-style feed of catches
-- Like and comment on reports
-- View catch details (fish type, weight, length)
-- Upload catch photos
-- Red "+" button to create new report
-
-### 5. Profile
-- View account information
-- Access personal spots and reports
-- Logout functionality
-
-## Firebase Security Rules (Recommended)
-
-### Firestore Rules
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read: if true;
-      allow write: if request.auth.uid == userId;
-    }
-    
-    match /fishingSpots/{spotId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.userId;
-    }
-    
-    match /catchReports/{reportId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.userId;
-    }
-  }
-}
-```
-
-### Storage Rules
-```javascript
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /{allPaths=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-  }
-}
-```
+- **[SETUP_GUIDE.md](SETUP_GUIDE.md)** - Complete setup walkthrough
+- **[FIREBASE_CONFIG.md](FIREBASE_CONFIG.md)** - Firebase configuration help
+- **[FIRESTORE_RULES.md](FIRESTORE_RULES.md)** - Security rules
+- **[ADMOB_COMPLETE_GUIDE.md](ADMOB_COMPLETE_GUIDE.md)** - AdMob monetization setup
+- **[EAS_BUILD_GUIDE.md](EAS_BUILD_GUIDE.md)** - Building for production
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Technical overview
 
 ## Troubleshooting
 
@@ -247,27 +102,22 @@ expo build:ios
 
 Follow Expo's documentation for detailed build instructions.
 
-## License
+## Resources
 
-This project is open source and available for educational purposes.
-
-## Support
-
-For issues and questions:
-- Check Firebase Console for backend errors
-- Review Expo documentation: https://docs.expo.dev
-- Check React Native Maps documentation: https://github.com/react-native-maps/react-native-maps
-
-## Future Enhancements
-
-- [ ] Weather integration for fishing forecasts
-- [ ] Offline mode with local caching
-- [ ] Advanced search and filters
-- [ ] Friend system and private spots
-- [ ] Fishing tournaments and leaderboards
-- [ ] Push notifications
-- [ ] Multi-language support (English, Tagalog, Waray)
+- **Expo Docs**: https://docs.expo.dev
+- **Firebase Docs**: https://firebase.google.com/docs
+- **React Native Maps**: https://github.com/react-native-maps/react-native-maps
 
 ---
 
 **Happy Fishing! 🎣**
+See [SETUP_GUIDE.md](SETUP_GUIDE.md#troubleshooting-common-issues) for common issues and solutions.
+
+**Quick fixes:**
+- Clear cache: `npm start -- --clear`
+- Reinstall: `rm -rf node_modules && npm install`
+- Check Firebase config in `src/services/firebase.ts`
+
+## Building for Production
+
+See [EAS_BUILD_GUIDE.md](EAS_BUILD_GUIDE.md) for building with EAS (Expo Application Services)
